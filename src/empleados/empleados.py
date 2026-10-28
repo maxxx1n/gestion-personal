@@ -31,9 +31,23 @@ def buscar_por_id(empleados, id_empleado):
 
 
 def _nombre_valido(nombre):
-    """El nombre solo puede tener letras (con tildes o ñ), espacios, guion, apostrofe y punto."""
-    return (all(c.isalpha() or c in " -'." for c in nombre)
-            and any(c.isalpha() for c in nombre))
+    """Requiere al menos 3 letras, sin simbolos seguidos, solo letras, espacios, guion, apostrofe y punto."""
+    letras = sum(1 for c in nombre if c.isalpha())
+    if letras < 3:
+        return False
+    # Evita signos repetidos como "--" o ".."
+    for signo in ("--", "..", "''"):
+        if signo in nombre:
+            return False
+    return all(c.isalpha() or c in " -'." for c in nombre)
+
+
+def _contacto_valido(contacto):
+    """Si se ingresa contacto, solo permite numeros, espacios, '+', '-' y parentesis (minimo 6 digitos)."""
+    if not contacto:
+        return True
+    digitos = sum(1 for c in contacto if c.isdigit())
+    return digitos >= 6 and all(c.isdigit() or c in " +-()" for c in contacto)
 
 
 def _ordenar_roles(roles):
@@ -41,14 +55,14 @@ def _ordenar_roles(roles):
     return [r for r in ROLES if r in roles]
 
 
-def _validar(empleados, nombre, dni, roles, turno, sucursal=None, id_actual=None):
+def _validar(empleados, nombre, dni, roles, turno, sucursal=None, id_actual=None, contacto=""):
     """Valida los datos. Lanza ValueError con un mensaje claro si algo esta mal."""
     if not nombre.strip():
         raise ValueError("El nombre no puede estar vacio.")
     if not _nombre_valido(nombre.strip()):
         raise ValueError("El nombre solo puede tener letras y espacios (sin numeros ni simbolos).")
-    if not (dni.isdigit() and 7 <= len(dni) <= 8):
-        raise ValueError("El DNI debe tener 7 u 8 numeros, sin puntos.")
+    if not (dni.isdigit() and 7 <= len(dni) <= 8) or dni.startswith("0"):
+        raise ValueError("El DNI debe tener 7 u 8 numeros, sin puntos ni empezar con 0.")
     for e in empleados:
         if e["dni"] == dni and e["id"] != id_actual:
             raise ValueError(f"Ya existe un empleado con el DNI {dni} ({e['nombre']}).")
@@ -67,6 +81,8 @@ def _validar(empleados, nombre, dni, roles, turno, sucursal=None, id_actual=None
         raise ValueError(f"Turno invalido. Opciones: {', '.join(TURNOS)}.")
     if sucursal is not None and sucursal not in SUCURSALES:
         raise ValueError(f"Sucursal Invalida. Opciones: {', '.join(SUCURSALES)}.")
+    if not _contacto_valido(contacto):
+        raise ValueError("El contacto solo puede tener numeros (minimo 6 digitos), espacios, '+' o '-'.")
 
 
 def alta(empleados, nombre, dni, roles, turno, sucursal=None, contacto="", fecha_ingreso=None):
