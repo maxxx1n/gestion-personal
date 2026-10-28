@@ -43,11 +43,24 @@ def _nombre_valido(nombre):
 
 
 def _contacto_valido(contacto):
-    """Si se ingresa contacto, solo permite numeros, espacios, '+', '-' y parentesis (minimo 6 digitos)."""
+    """Acepta vacio, un telefono valido (min. 6 digitos) o un email valido."""
     if not contacto:
         return True
+    # Si contiene '@', lo validamos como correo electronico
+    if "@" in contacto:
+        if " " in contacto or contacto.count("@") != 1:
+            return False
+        usuario, dominio = contacto.split("@")
+        if not usuario or "." not in dominio:
+            return False
+        partes_dom = dominio.split(".")
+        if any(not p for p in partes_dom) or len(partes_dom[-1]) < 2:
+            return False
+        permitidos = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-+@")
+        return all(c in permitidos for c in contacto)
+    # Si no tiene '@', lo validamos como telefono
     digitos = sum(1 for c in contacto if c.isdigit())
-    return digitos >= 6 and all(c.isdigit() or c in " +-()" for c in contacto)
+    return 6 <= digitos <= 15 and all(c.isdigit() or c in " +-()" for c in contacto)
 
 
 def _ordenar_roles(roles):
@@ -55,12 +68,12 @@ def _ordenar_roles(roles):
     return [r for r in ROLES if r in roles]
 
 
-def _validar(empleados, nombre, dni, roles, turno, sucursal=None, id_actual=None, contacto=""):
+def _validar(empleados, nombre, dni, roles, turno, sucursal=None, contacto="", id_actual=None,):
     """Valida los datos. Lanza ValueError con un mensaje claro si algo esta mal."""
     if not nombre.strip():
         raise ValueError("El nombre no puede estar vacio.")
     if not _nombre_valido(nombre.strip()):
-        raise ValueError("El nombre solo puede tener letras y espacios (sin numeros ni simbolos).")
+        raise ValueError("El nombre solo puede tener mas de tres letras y espacios (sin numeros ni simbolos).")
     if not (dni.isdigit() and 7 <= len(dni) <= 8) or dni.startswith("0"):
         raise ValueError("El DNI debe tener 7 u 8 numeros, sin puntos ni empezar con 0.")
     for e in empleados:
@@ -82,7 +95,7 @@ def _validar(empleados, nombre, dni, roles, turno, sucursal=None, id_actual=None
     if sucursal is not None and sucursal not in SUCURSALES:
         raise ValueError(f"Sucursal Invalida. Opciones: {', '.join(SUCURSALES)}.")
     if not _contacto_valido(contacto):
-        raise ValueError("El contacto solo puede tener numeros (minimo 6 digitos), espacios, '+' o '-'.")
+        raise ValueError("El contacto debe ser un teléfono válido (mín. 6 dígitos) o un email (ej. usuario@gmail.com).")
 
 
 def alta(empleados, nombre, dni, roles, turno, sucursal=None, contacto="", fecha_ingreso=None):
@@ -91,7 +104,7 @@ def alta(empleados, nombre, dni, roles, turno, sucursal=None, contacto="", fecha
     if isinstance(roles, str):
         roles = [roles]
     sucursal = sucursal or SUCURSALES[0]
-    _validar(empleados, nombre, dni, roles, turno, sucursal)
+    _validar(empleados, nombre, dni, roles, turno, sucursal, contacto)
     lista_roles = _ordenar_roles(roles)
     nuevo = {
         "id": max((e["id"] for e in empleados), default=0) + 1,
@@ -120,7 +133,7 @@ def modificar(empleados, id_empleado, nombre, dni, roles, turno, sucursal=None, 
     if isinstance(roles, str):
         roles = [roles]
     sucursal = sucursal or emp.get("sucursal", SUCURSALES[0])
-    _validar(empleados, nombre, dni, roles, turno, sucursal, id_actual=id_empleado)
+    _validar(empleados, nombre, dni, roles, turno, sucursal, contacto, id_actual=id_empleado)
     lista_roles = _ordenar_roles(roles)
     emp.update(
         nombre=nombre,
